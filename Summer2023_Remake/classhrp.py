@@ -1,3 +1,5 @@
+### This file is the class that makes the text based groups.
+
 import pandas as pd
 import requests as rq
 import numpy as np
