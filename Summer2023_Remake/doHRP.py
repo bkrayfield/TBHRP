@@ -10,8 +10,14 @@ import pickle
 #from sklearn.covariance import LedoitWolf
 from scipy.cluster.hierarchy import ClusterWarning
 from warnings import simplefilter
+#from classhrp import GenerateSIMMAT
 simplefilter("ignore", ClusterWarning)
 
+###This part may be deleated in the future
+API_KEY = "671c64aa0b622cba50aeaf51f54b8ee209467479d94a16c9e4bfc7badc36abf9"
+
+TICKERS = ["MSFT","XOM","PG","IBM","AMD"]
+YEARS = [2012,2022]
 
 
 # On 20151227 by MLdP <lopezdeprado@lbl.gov>
@@ -75,8 +81,54 @@ def correlDist(corr):
  
 
 
- def convert_to_mat(df_):
+def convert_to_mat(df_):
     keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
     keep, unclean = keep.create_simmat()
 
-    mat_ =np.split(unclean.values[0],5)
+    mat_ = np.asmatrix(np.split(unclean.values[0],5))[1,0]
+
+df = pd.read_csv("top500Total.csv")
+date_vector = df[['idx']]
+date_vector['idx'] = pd.to_datetime(date_vector['idx'], errors = "coerce")
+date_vector['year'] = date_vector['idx'].apply(lambda x : x.year)
+df = df[TICKERS]
+keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
+keep, unclean = keep.create_simmat()
+
+
+
+
+cols = list(df.columns)
+cov,corr=df.cov(),df.corr()
+### Traditional HRP
+dist=correlDist(corr)
+link=sch.linkage(dist,'single')
+sortIx=getQuasiDiag(link)
+sortIx=corr.index[sortIx].tolist()
+hrp = getRecBipart(cov,sortIx)
+
+
+tfidf = np.asmatrix(np.split(unclean.values[-1],5))
+pairwise_similarity = np.asarray((tfidf * tfidf.T))
+
+#### To avoid sqrt error
+pairwise_similarity = ((1-pairwise_similarity)/2.)
+np.fill_diagonal(pairwise_similarity, 1)
+pairwise_similarity = np.sqrt(pairwise_similarity)
+np.fill_diagonal(pairwise_similarity,0)
+dist = pairwise_similarity
+dist = np.nan_to_num(dist)
+
+### Sort and link
+link=sch.linkage(dist,'single')
+sortIx=getQuasiDiag(link)
+sortIx=corr.index[sortIx].tolist() # recover labels
+
+#4) Capital allocation with text based sorting
+tbhrp=getRecBipart(cov,sortIx)
+
+def min_var(cov):
+    icov = np.linalg.inv(np.matrix(cov))
+    one = np.ones((icov.shape[0],1))
+    weights = (icov*one)/(one.T*icov*one)
+    return weights
