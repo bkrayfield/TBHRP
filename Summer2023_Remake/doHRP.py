@@ -76,7 +76,7 @@ def correlDist(corr):
 
 
  def convert_to_mat(df_):
-    blank_ = np.zeros((len(TICKERS), len(TICKERS)), int)
-    np.fill_diagonal(blank_, 1)
+    keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
+    keep, unclean = keep.create_simmat()
 
-    for i in df
+    mat_ =np.split(unclean.values[0],5)

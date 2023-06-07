@@ -93,18 +93,24 @@ class GenerateSIMMAT:
         for timestamp, array in save_results.items():
             flattened_array = np.array(array).flatten()
             parsed_data.append(flattened_array.tolist())
-
+        
         df = pd.DataFrame(parsed_data)
+        unclean = df.copy()
+        unclean.index = save_results.keys()
+        unclean = unclean.sort_index()
+        unclean = unclean.replace(to_replace=0, method='bfill')
 
         df = df.T.drop_duplicates().T
-        df = df.replace(to_replace=0, method='ffill')
-
         df.index = save_results.keys()
+        df = df.sort_index()
+        df = df.replace(to_replace=0, method='bfill')
+
+        #df.index = save_results.keys()
         df = df.loc[:, ~(df.sum(axis=0) >= len(df) - 1)]
         df.columns = [(TICKERS[y], TICKERS[x]) for y in range(len(TICKERS)) for x in range(y + 1, len(TICKERS))]
-        df = df.sort_index()
+        #df = df.sort_index()
 
-        return df
+        return df, unclean
     
     def find_max_negative_index(self, lst):
         max_index = None
