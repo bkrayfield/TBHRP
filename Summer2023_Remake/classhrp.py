@@ -107,7 +107,7 @@ class GenerateSIMMAT:
 
         #df.index = save_results.keys()
         df = df.loc[:, ~(df.sum(axis=0) >= len(df) - 1)]
-        df.columns = [(TICKERS[y], TICKERS[x]) for y in range(len(TICKERS)) for x in range(y + 1, len(TICKERS))]
+        #df.columns = [(TICKERS[y], TICKERS[x]) for y in range(len(TICKERS)) for x in range(y + 1, len(TICKERS))]
         #df = df.sort_index()
 
         return df, unclean
@@ -138,4 +138,3 @@ class GenerateSIMMAT:
         all_ = [[li_[ip][i] for i in r] for ip, r in enumerate(idxs)]
 
         return np.array(all_).T
-    

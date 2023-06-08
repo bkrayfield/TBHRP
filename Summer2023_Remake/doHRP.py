@@ -89,13 +89,17 @@ def convert_to_mat(df_):
 
 df = pd.read_csv("top500Total.csv")
 date_vector = df[['idx']]
-date_vector['idx'] = pd.to_datetime(date_vector['idx'], errors = "coerce")
-date_vector['year'] = date_vector['idx'].apply(lambda x : x.year)
-df = df[TICKERS]
+#date_vector['idx'] = pd.to_datetime(date_vector['idx'], errors = "coerce")
+#date_vector['year'] = date_vector['idx'].apply(lambda x : x.year)
+return_ = (np.log(df[list(df.columns)[1:]]) - np.log(df[list(df.columns)[1:]].shift(1)))
+df = return_.copy()
+df.index = date_vector
+df = df.sample(10, axis = 1)
+df = df.dropna()
+TICKERS = df.columns.to_list()
+print(TICKERS)
 keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
 keep, unclean = keep.create_simmat()
-
-
 
 
 cols = list(df.columns)
@@ -108,7 +112,7 @@ sortIx=corr.index[sortIx].tolist()
 hrp = getRecBipart(cov,sortIx)
 
 
-tfidf = np.asmatrix(np.split(unclean.values[-1],5))
+tfidf = np.asmatrix(np.split(unclean.values[-1],len(TICKERS)))
 pairwise_similarity = np.asarray((tfidf * tfidf.T))
 
 #### To avoid sqrt error
@@ -127,8 +131,24 @@ sortIx=corr.index[sortIx].tolist() # recover labels
 #4) Capital allocation with text based sorting
 tbhrp=getRecBipart(cov,sortIx)
 
+print("HRP Values:\n",)
+print(hrp.sort_values(ascending=False))
+print("TB-HRP Values:\n",)
+print(tbhrp.sort_values(ascending=False))
+
 def min_var(cov):
     icov = np.linalg.inv(np.matrix(cov))
     one = np.ones((icov.shape[0],1))
     weights = (icov*one)/(one.T*icov*one)
     return weights
+
+
+###Minimum Variance
+print("Minimum Variance:\n",)
+print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
+
+#### Inverse Variance
+print("Inverse Variance:\n",)
+iv_weights = df.std().values
+iv_weights = iv_weights / np.linalg.norm(iv_weights, ord = 1)
+print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
