@@ -87,61 +87,75 @@ def convert_to_mat(df_):
 
     mat_ = np.asmatrix(np.split(unclean.values[0],5))[1,0]
 
-df = pd.read_csv("top500Total.csv")
+import pandas as pd
+import numpy as np
+import scipy.cluster.hierarchy as sch
+
+# Read the CSV file
+df = pd.read_csv(r"C:\Users\blake\top500Total.csv")
+
+# Extract 'idx' column as date vector
 date_vector = df[['idx']]
-#date_vector['idx'] = pd.to_datetime(date_vector['idx'], errors = "coerce")
-#date_vector['year'] = date_vector['idx'].apply(lambda x : x.year)
-return_ = (np.log(df[list(df.columns)[1:]]) - np.log(df[list(df.columns)[1:]].shift(1)))
+
+# Compute log returns
+return_ = np.log(df[list(df.columns)[1:]]) - np.log(df[list(df.columns)[1:]].shift(1))
+
+# Update the dataframe with log returns and set index
 df = return_.copy()
 df.index = date_vector
-df = df.sample(10, axis = 1)
-df = df.dropna()
+
+# Sample 10 columns randomly and drop rows with NaN values
+df = df.sample(10, axis=1).dropna()
+
+# Get the tickers from columns
 TICKERS = df.columns.to_list()
-print(TICKERS)
+
+# Generate SIMMAT using API_KEY and YEARS
 keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
 keep, unclean = keep.create_simmat()
 
+# Compute covariance and correlation matrices
+cov, corr = df.cov(), df.corr()
 
-cols = list(df.columns)
-cov,corr=df.cov(),df.corr()
 ### Traditional HRP
-dist=correlDist(corr)
-link=sch.linkage(dist,'single')
-sortIx=getQuasiDiag(link)
-sortIx=corr.index[sortIx].tolist()
-hrp = getRecBipart(cov,sortIx)
+dist = correlDist(corr)
+link = sch.linkage(dist, 'single')
+sortIx = getQuasiDiag(link)
+sortIx = corr.index[sortIx].tolist()
+hrp = getRecBipart(cov, sortIx)
 
-
-tfidf = np.asmatrix(np.split(unclean.values[-1],len(TICKERS)))
+# Compute pairwise similarity using TF-IDF
+tfidf = np.asmatrix(np.split(unclean.values[-1], len(TICKERS)))
 pairwise_similarity = np.asarray((tfidf * tfidf.T))
 
-#### To avoid sqrt error
-pairwise_similarity = ((1-pairwise_similarity)/2.)
+# Adjust pairwise similarity to avoid sqrt error
+pairwise_similarity = ((1 - pairwise_similarity) / 2.)
 np.fill_diagonal(pairwise_similarity, 1)
 pairwise_similarity = np.sqrt(pairwise_similarity)
-np.fill_diagonal(pairwise_similarity,0)
+np.fill_diagonal(pairwise_similarity, 0)
 dist = pairwise_similarity
 dist = np.nan_to_num(dist)
 
-### Sort and link
-link=sch.linkage(dist,'single')
-sortIx=getQuasiDiag(link)
-sortIx=corr.index[sortIx].tolist() # recover labels
+# Sort and link
+link = sch.linkage(dist, 'single')
+sortIx = getQuasiDiag(link)
+sortIx = corr.index[sortIx].tolist()
 
-#4) Capital allocation with text based sorting
-tbhrp=getRecBipart(cov,sortIx)
+# Capital allocation with text-based sorting
+tbhrp = getRecBipart(cov, sortIx)
 
-print("HRP Values:\n",)
+# Print HRP and TB-HRP values
+print("HRP Values:")
 print(hrp.sort_values(ascending=False))
-print("TB-HRP Values:\n",)
+print("TB-HRP Values:")
 print(tbhrp.sort_values(ascending=False))
+
 
 def min_var(cov):
     icov = np.linalg.inv(np.matrix(cov))
     one = np.ones((icov.shape[0],1))
     weights = (icov*one)/(one.T*icov*one)
     return weights
-
 
 ###Minimum Variance
 print("Minimum Variance:\n",)
