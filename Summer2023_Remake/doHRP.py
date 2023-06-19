@@ -16,7 +16,6 @@ simplefilter("ignore", ClusterWarning)
 ###This part may be deleated in the future
 API_KEY = "671c64aa0b622cba50aeaf51f54b8ee209467479d94a16c9e4bfc7badc36abf9"
 
-TICKERS = ["MSFT","XOM","PG","IBM","AMD"]
 YEARS = [2012,2022]
 
 
@@ -39,18 +38,19 @@ def getClusterVar(cov,cItems):
 #------------------------------------------------------------------------------
 def getQuasiDiag(link):
     # Sort clustered items by distance
-    link=link.astype(int)
-    sortIx=pd.Series([link[-1,0],link[-1,1]])
-    numItems=link[-1,3] # number of original items
-    while sortIx.max()>=numItems:
-        sortIx.index=range(0,sortIx.shape[0]*2,2) # make space
-        df0=sortIx[sortIx>=numItems] # find clusters
-        i=df0.index;j=df0.values-numItems
-        sortIx[i]=link[j,0] # item 1
-        df0=pd.Series(link[j,1],index=i+1)
-        sortIx=sortIx.append(df0) # item 2
-        sortIx=sortIx.sort_index() # re-sort
-        sortIx.index=range(sortIx.shape[0]) # re-index
+    link = link.astype(int)
+    sortIx = pd.Series([link[-1, 0], link[-1, 1]])
+    numItems = link[-1, 3] # number of original items
+    while sortIx.max() >= numItems:
+        sortIx.index = range(0, sortIx.shape[0] * 2, 2) # make space
+        df0 = sortIx[sortIx >= numItems] # find clusters
+        i = df0.index
+        j = df0.values - numItems
+        sortIx[i] = link[j, 0] # item 1
+        df0 = pd.Series(link[j, 1], index=i + 1)
+        sortIx = pd.concat([sortIx, df0]) # item 2
+        sortIx = sortIx.sort_index() # re-sort
+        sortIx.index = range(sortIx.shape[0]) # re-index
     return sortIx.tolist()
 #------------------------------------------------------------------------------
 def getRecBipart(cov,sortIx):
@@ -79,7 +79,11 @@ def correlDist(corr):
     dist=((1-corr)/2.)**.5 # distance matrix
     return dist
  
-
+def min_var(cov):
+    icov = np.linalg.inv(np.matrix(cov))
+    one = np.ones((icov.shape[0],1))
+    weights = (icov*one)/(one.T*icov*one)
+    return weights
 
 def convert_to_mat(df_):
     keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
@@ -110,59 +114,57 @@ df = df.sample(10, axis=1).dropna()
 # Get the tickers from columns
 TICKERS = df.columns.to_list()
 
-# Generate SIMMAT using API_KEY and YEARS
-keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
-keep, unclean = keep.create_simmat()
+def final_fun(df, TICKERS):
 
-# Compute covariance and correlation matrices
-cov, corr = df.cov(), df.corr()
+    # Generate SIMMAT using API_KEY and YEARS
+    keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
+    keep, unclean = keep.create_simmat()
 
-### Traditional HRP
-dist = correlDist(corr)
-link = sch.linkage(dist, 'single')
-sortIx = getQuasiDiag(link)
-sortIx = corr.index[sortIx].tolist()
-hrp = getRecBipart(cov, sortIx)
+    # Compute covariance and correlation matrices
+    cov, corr = df.cov(), df.corr()
 
-# Compute pairwise similarity using TF-IDF
-tfidf = np.asmatrix(np.split(unclean.values[-1], len(TICKERS)))
-pairwise_similarity = np.asarray((tfidf * tfidf.T))
+    ### Traditional HRP
+    dist = correlDist(corr)
+    link = sch.linkage(dist, 'single')
+    sortIx = getQuasiDiag(link)
+    sortIx = corr.index[sortIx].tolist()
+    hrp = getRecBipart(cov, sortIx)
 
-# Adjust pairwise similarity to avoid sqrt error
-pairwise_similarity = ((1 - pairwise_similarity) / 2.)
-np.fill_diagonal(pairwise_similarity, 1)
-pairwise_similarity = np.sqrt(pairwise_similarity)
-np.fill_diagonal(pairwise_similarity, 0)
-dist = pairwise_similarity
-dist = np.nan_to_num(dist)
+    # Compute pairwise similarity using TF-IDF
+    tfidf = np.asmatrix(np.split(unclean.values[-1], len(TICKERS)))
+    pairwise_similarity = np.asarray((tfidf * tfidf.T))
 
-# Sort and link
-link = sch.linkage(dist, 'single')
-sortIx = getQuasiDiag(link)
-sortIx = corr.index[sortIx].tolist()
+    # Adjust pairwise similarity to avoid sqrt error
+    pairwise_similarity = ((1 - pairwise_similarity) / 2.)
+    np.fill_diagonal(pairwise_similarity, 1)
+    pairwise_similarity = np.sqrt(pairwise_similarity)
+    np.fill_diagonal(pairwise_similarity, 0)
+    dist = pairwise_similarity
+    np.nan_to_num(dist, copy=False)
 
-# Capital allocation with text-based sorting
-tbhrp = getRecBipart(cov, sortIx)
+    # Sort and link
+    link = sch.linkage(dist, 'single')
+    sortIx = getQuasiDiag(link)
+    sortIx = corr.index[sortIx].tolist()
 
-# Print HRP and TB-HRP values
-print("HRP Values:")
-print(hrp.sort_values(ascending=False))
-print("TB-HRP Values:")
-print(tbhrp.sort_values(ascending=False))
+    # Capital allocation with text-based sorting
+    tbhrp = getRecBipart(cov, sortIx)
+
+    # Print HRP and TB-HRP values
+    print("HRP Values:")
+    print(hrp.sort_values(ascending=False))
+    print("TB-HRP Values:")
+    print(tbhrp.sort_values(ascending=False))
+
+    ###Minimum Variance
+    print("Minimum Variance:\n",)
+    print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
+
+    #### Inverse Variance
+    print("Inverse Variance:\n",)
+    iv_weights = df.std().values
+    iv_weights = iv_weights / np.linalg.norm(iv_weights, ord = 1)
+    print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
 
 
-def min_var(cov):
-    icov = np.linalg.inv(np.matrix(cov))
-    one = np.ones((icov.shape[0],1))
-    weights = (icov*one)/(one.T*icov*one)
-    return weights
-
-###Minimum Variance
-print("Minimum Variance:\n",)
-print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
-
-#### Inverse Variance
-print("Inverse Variance:\n",)
-iv_weights = df.std().values
-iv_weights = iv_weights / np.linalg.norm(iv_weights, ord = 1)
-print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
+final_fun(df, TICKERS)
