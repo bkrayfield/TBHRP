@@ -1,12 +1,12 @@
-import re
-import sys
+#import re
+#import sys
 from sklearn.feature_extraction.text import TfidfVectorizer
 import matplotlib.pyplot as plt
 import scipy.cluster.hierarchy as sch,random,numpy as np,pandas as pd
 from os import listdir
 from os.path import isfile, join
-import math
-import pickle
+#import math
+#import pickle
 #from sklearn.covariance import LedoitWolf
 from scipy.cluster.hierarchy import ClusterWarning
 from warnings import simplefilter
