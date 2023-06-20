@@ -31,7 +31,7 @@ class GenerateSIMMAT:
         temp_data = pd.DataFrame.from_records(response['filings'])
         temp_data = temp_data.sort_values(['ticker','filedAt'], ascending = False)
         temp_data['fyear'] = pd.to_datetime(temp_data['periodOfReport'], errors='coerce').dt.year
-        temp_data = temp_data[temp_data.fyear.isin(range(self.YEARS[0],self.YEARS[1]+1))]
+        temp_data = temp_data[temp_data.fyear.isin(range(self.YEARS[0]-1,self.YEARS[1]+1))]
         temp_data['filedAt'] = pd.to_datetime(temp_data['filedAt'].str[:10])
         temp_data = temp_data.groupby(["ticker",'fyear']).head(1)
         temp_data = temp_data.reset_index()

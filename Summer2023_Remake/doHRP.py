@@ -16,7 +16,7 @@ simplefilter("ignore", ClusterWarning)
 ###This part may be deleated in the future
 API_KEY = "671c64aa0b622cba50aeaf51f54b8ee209467479d94a16c9e4bfc7badc36abf9"
 
-YEARS = [2012,2022]
+YEARS = [2016,2022]
 
 
 # On 20151227 by MLdP <lopezdeprado@lbl.gov>
@@ -114,14 +114,19 @@ df = df.sample(10, axis=1).dropna()
 # Get the tickers from columns
 TICKERS = df.columns.to_list()
 
-def final_fun(df, TICKERS):
+# Generate SIMMAT using API_KEY and YEARS
+YEARS_TEXT = [YEARS[0]- 1, YEARS[1]]
 
-    # Generate SIMMAT using API_KEY and YEARS
-    keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
-    keep, unclean = keep.create_simmat()
 
+
+keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
+keep, unclean = keep.create_simmat()
+
+def final_fun(df, TICKERS, keep_unclean):
+    save_dict = {}
     # Compute covariance and correlation matrices
     cov, corr = df.cov(), df.corr()
+    save_dict['Dates'] = df.index
 
     ### Traditional HRP
     dist = correlDist(corr)
@@ -131,7 +136,7 @@ def final_fun(df, TICKERS):
     hrp = getRecBipart(cov, sortIx)
 
     # Compute pairwise similarity using TF-IDF
-    tfidf = np.asmatrix(np.split(unclean.values[-1], len(TICKERS)))
+    tfidf = np.asmatrix(np.split(keep_unclean.values[0], len(TICKERS)))
     pairwise_similarity = np.asarray((tfidf * tfidf.T))
 
     # Adjust pairwise similarity to avoid sqrt error
@@ -153,18 +158,63 @@ def final_fun(df, TICKERS):
     # Print HRP and TB-HRP values
     print("HRP Values:")
     print(hrp.sort_values(ascending=False))
+    save_dict['HRP'] = hrp.sort_values(ascending=False)
     print("TB-HRP Values:")
     print(tbhrp.sort_values(ascending=False))
+    save_dict['TBHRP'] = tbhrp.sort_values(ascending=False)
 
     ###Minimum Variance
     print("Minimum Variance:\n",)
     print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
+    save_dict['MV'] = pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False)
 
     #### Inverse Variance
     print("Inverse Variance:\n",)
     iv_weights = df.std().values
     iv_weights = iv_weights / np.linalg.norm(iv_weights, ord = 1)
     print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
+    save_dict['IV'] = pd.Series(iv_weights, df.columns).sort_values(ascending = False)
 
+    return save_dict
 
 final_fun(df, TICKERS)
+
+
+
+
+
+
+'''
+plt.style.use("bmh")
+
+ax = plt.gca()
+ax.get_yaxis().set_visible(False)
+ax.grid(False)
+ax.set(frame_on=False)
+sch.dendrogram(link, labels = sortIx)
+plt.show()
+
+
+df.index = pd.to_datetime([x[0] for x in df.index])
+df = df[(df.index.year >= YEARS[0]) & (df.index.year <= YEARS[1])]
+n = 30
+list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
+
+# Generate SIMMAT using API_KEY and YEARS
+keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
+keep, unclean = keep.create_simmat()
+
+total_save = []
+for frame_num in list_df:
+
+    ### Get max date and find the right matrix for the optimization
+    max_date = frame_num.index.max()
+    keep_unclean = unclean[(unclean.index <= max_date)]
+    keep_unclean = keep_unclean[(keep_unclean.index == keep_unclean.index.max())]
+    
+    total_save.append(final_fun(frame_num, TICKERS, keep_unclean))
+
+###Potential Speed up
+n = len(df)/30
+np.array_split(df, 30)
+'''
