@@ -214,6 +214,22 @@ for frame_num in list_df:
     
     total_save.append(final_fun(frame_num, TICKERS, keep_unclean))
 
+
+for loop in range(len(list_df)-1):
+    ### First set in right order
+    list_df[loop+1] = list_df[loop+1][total_save[loop]['HRP'].index]
+
+    ### Add one
+    list_df[loop+1] = list_df[loop+1] + 1
+
+    ### Mutiply first row
+    list_df[loop+1].iloc[0] = list_df[loop+1].iloc[0] * total_save[loop]['HRP']
+
+    ### Final Return
+    print(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1,":",loop+1)
+
+
+    
 ###Potential Speed up
 n = len(df)/30
 np.array_split(df, 30)
