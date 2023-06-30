@@ -109,7 +109,7 @@ df = return_.copy()
 df.index = date_vector
 
 # Sample 10 columns randomly and drop rows with NaN values
-df = df.sample(10, axis=1).dropna()
+df = df.sample(30, axis=1).dropna()
 
 # Get the tickers from columns
 TICKERS = df.columns.to_list()
@@ -196,7 +196,7 @@ plt.show()
 
 
 df.index = pd.to_datetime([x[0] for x in df.index])
-df = df[(df.index.year >= YEARS[0]) & (df.index.year <= YEARS[1])]
+df = df[(df.index >= unclean.index.min()) & (df.index <= unclean.index.max())]
 n = 30
 list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
 

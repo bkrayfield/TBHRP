@@ -98,7 +98,7 @@ class GenerateSIMMAT:
         unclean = df.copy()
         unclean.index = save_results.keys()
         unclean = unclean.sort_index()
-        unclean = unclean.replace(to_replace=0, method='bfill')
+        unclean = unclean.replace(to_replace=0, method='ffill')
 
         df = df.T.drop_duplicates().T
         df.index = save_results.keys()
