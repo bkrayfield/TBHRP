@@ -214,20 +214,24 @@ for frame_num in list_df:
     
     total_save.append(final_fun(frame_num, TICKERS, keep_unclean))
 
-
+n = 30
+list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
+results = []
 for loop in range(len(list_df)-1):
     ### First set in right order
-    list_df[loop+1] = list_df[loop+1][total_save[loop]['HRP'].index]
+    list_df[loop+1] = list_df[loop+1][total_save[loop]['IV'].index]
 
     ### Add one
     list_df[loop+1] = list_df[loop+1] + 1
 
     ### Mutiply first row
-    list_df[loop+1].iloc[0] = list_df[loop+1].iloc[0] * total_save[loop]['HRP']
+    list_df[loop+1].iloc[0] = list_df[loop+1].iloc[0] * total_save[loop]['IV']
 
     ### Final Return
-    print(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1,":",loop+1)
-
+    results.append(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1)
+ 
+print(results)
+np.cumprod(np.array(results) + 1)[-1]-1
 
     
 ###Potential Speed up
