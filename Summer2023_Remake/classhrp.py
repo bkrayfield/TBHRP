@@ -18,24 +18,33 @@ class GenerateSIMMAT:
         self.YEARS = YEARS
         
     def getFilingURLS(self):
+        total_response = pd.DataFrame()
         queryApi = QueryApi(api_key=self.API_KEY)
-        payload = {
-            "query": {
-                "query_string": {
-                    "query": "ticker:({0}) AND formType:\"10-K\"".format(", ".join(map(str, self.TICKERS)))
-                }
-            },
-            "sort": [{ "filedAt": { "order": "desc" } }]
-        }
-        response = queryApi.get_filings(payload)
-        temp_data = pd.DataFrame.from_records(response['filings'])
-        temp_data = temp_data.sort_values(['ticker','filedAt'], ascending = False)
-        temp_data['fyear'] = pd.to_datetime(temp_data['periodOfReport'], errors='coerce').dt.year
-        #temp_data = temp_data[temp_data.fyear.isin(range(self.YEARS[0]-1,self.YEARS[1]+1))]
-        temp_data['filedAt'] = pd.to_datetime(temp_data['filedAt'].str[:10])
-        temp_data = temp_data.groupby(["ticker",'fyear']).head(1)
-        temp_data = temp_data.reset_index()
-        return temp_data
+        for from_batch in range(0, 9800, 200): 
+            payload = {
+                "query": {
+                    "query_string": {
+                        "query": "ticker:({0}) AND formType:\"10-K\"".format(", ".join(map(str, self.TICKERS)))
+                    }
+                },
+                "from": "{0}".format(from_batch),
+                "size": "200", # dont change this
+                "sort": [{ "filedAt": { "order": "desc" } }]
+            }
+            response = queryApi.get_filings(payload)
+            print(len(response["filings"]))
+            if len(response["filings"]) == 0:
+                break
+            #print(pd.DataFrame.from_records(response['filings']))
+            temp_data = pd.DataFrame.from_records(response['filings'])
+            temp_data = temp_data.sort_values(['ticker','filedAt'], ascending = False)
+            temp_data['fyear'] = pd.to_datetime(temp_data['periodOfReport'], errors='coerce').dt.year
+            #temp_data = temp_data[temp_data.fyear.isin(range(self.YEARS[0]-1,self.YEARS[1]+1))]
+            temp_data['filedAt'] = pd.to_datetime(temp_data['filedAt'].str[:10])
+            temp_data = temp_data.groupby(["ticker",'fyear']).head(1)
+            temp_data = temp_data.reset_index()
+            total_response = pd.concat([total_response,temp_data])
+        return total_response
     
     def get_SimilarityMAT(self, FILING_URLS):
         data_ = []
@@ -110,7 +119,7 @@ class GenerateSIMMAT:
         #df.columns = [(TICKERS[y], TICKERS[x]) for y in range(len(TICKERS)) for x in range(y + 1, len(TICKERS))]
         #df = df.sort_index()
 
-        return df, unclean
+        return df, unclean 
     
     def find_max_negative_index(self, lst):
         max_index = None

@@ -16,7 +16,9 @@ simplefilter("ignore", ClusterWarning)
 ###This part may be deleated in the future
 API_KEY = "671c64aa0b622cba50aeaf51f54b8ee209467479d94a16c9e4bfc7badc36abf9"
 
-YEARS = [2016,2022]
+YEARS = [2016,2020]
+
+rnum = "123"
 
 
 # On 20151227 by MLdP <lopezdeprado@lbl.gov>
@@ -95,18 +97,59 @@ import pandas as pd
 import numpy as np
 import scipy.cluster.hierarchy as sch
 
+def getFilingURLSin(TICKERS,API_KEY):
+    total_response = pd.DataFrame()
+    queryApi = QueryApi(api_key=API_KEY)
+    for from_batch in range(0, 9800, 200): 
+        try:
+            payload = {
+                "query": {
+                    "query_string": {
+                        "query": "ticker:({0}) AND formType:\"10-K\"".format(", ".join(map(str, TICKERS)))
+                    }
+                },
+                "from": "{0}".format(from_batch),
+                "size": "200", # dont change this
+                "sort": [{ "filedAt": { "order": "desc" } }]
+            }
+            response = queryApi.get_filings(payload)
+            print(len(response["filings"]))
+            if len(response["filings"]) == 0:
+                break
+            #print(pd.DataFrame.from_records(response['filings']))
+            temp_data = pd.DataFrame.from_records(response['filings'])
+            temp_data = temp_data.sort_values(['ticker','filedAt'], ascending = False)
+            temp_data['fyear'] = pd.to_datetime(temp_data['periodOfReport'], errors='coerce').dt.year
+            #temp_data = temp_data[temp_data.fyear.isin(range(self.YEARS[0]-1,self.YEARS[1]+1))]
+            temp_data['filedAt'] = pd.to_datetime(temp_data['filedAt'].str[:10])
+            temp_data = temp_data.groupby(["ticker",'fyear']).head(1)
+            temp_data = temp_data.reset_index()
+            total_response = pd.concat([total_response,temp_data])
+        except:
+            break
+    return total_response
+
+
+
 # Read the CSV file
 df = pd.read_csv(r"C:\Users\blake\top500Total.csv")
+itit__ = getFilingURLSin(df.columns, API_KEY)
+
 
 # Extract 'idx' column as date vector
 date_vector = df[['idx']]
 
 # Compute log returns
 return_ = np.log(df[list(df.columns)[1:]]) - np.log(df[list(df.columns)[1:]].shift(1))
+keep_list = list(set([x for x in itit__.ticker.tolist() if x in df.columns]))
+return_.index = date_vector
+return_ = return_[keep_list]
+
 
 # Update the dataframe with log returns and set index
 df = return_.copy()
-df.index = date_vector
+
+
 
 # Sample 10 columns randomly and drop rows with NaN values
 df = df.sample(30, axis=1).dropna()
@@ -119,8 +162,8 @@ YEARS_TEXT = [YEARS[0]- 1, YEARS[1]]
 
 
 
-keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
-keep, unclean = keep.create_simmat()
+#keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
+#keep, unclean = keep.create_simmat()
 
 def final_fun(df, TICKERS, keep_unclean):
     save_dict = {}
@@ -177,7 +220,7 @@ def final_fun(df, TICKERS, keep_unclean):
 
     return save_dict
 
-final_fun(df, TICKERS)
+#final_fun(df, TICKERS)
 
 
 
@@ -185,6 +228,8 @@ final_fun(df, TICKERS)
 
 
 '''
+
+#### This is just to plot the dendrogram
 plt.style.use("bmh")
 
 ax = plt.gca()
@@ -193,16 +238,35 @@ ax.grid(False)
 ax.set(frame_on=False)
 sch.dendrogram(link, labels = sortIx)
 plt.show()
+####
 
+'''
+# Update the dataframe with log returns and set index
+df = return_.copy()
+#df.index = date_vector
+#keep_list = [x for x in itit__.ticker.tolist() if x in df.columns]
+#df = df[keep_list]
+
+
+# Sample 10 columns randomly and drop rows with NaN values
+df = df.sample(30, axis=1).dropna()
+
+# Get the tickers from columns
+TICKERS = df.columns.to_list()
+
+# Generate SIMMAT using API_KEY and YEARS
+YEARS_TEXT = [YEARS[0]- 1, YEARS[1]]
+
+# Generate SIMMAT using API_KEY and YEARS
+keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
+keep, unclean = keep.create_simmat()
 
 df.index = pd.to_datetime([x[0] for x in df.index])
 df = df[(df.index >= unclean.index.min()) & (df.index <= unclean.index.max())]
 n = 30
 list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
 
-# Generate SIMMAT using API_KEY and YEARS
-keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
-keep, unclean = keep.create_simmat()
+
 
 total_save = []
 for frame_num in list_df:
@@ -214,22 +278,39 @@ for frame_num in list_df:
     
     total_save.append(final_fun(frame_num, TICKERS, keep_unclean))
 
-n = 30
-list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
-results = []
-for loop in range(len(list_df)-1):
-    ### First set in right order
-    list_df[loop+1] = list_df[loop+1][total_save[loop]['IV'].index]
+'''
+######################### Change this ###########################
+### This is to intrepret returns
+for tpe in ['HRP', 'TBHRP', 'IV', 'EQ','MV']:
+    type = tpe  #### 'HRP', 'TBHRP', 'MV', 'IV', 'EQ'
+    n = 30
+    for x in total_save:
+        x['EQ'] = pd.Series([1/n for x in range(n)], index = x['HRP'].index)
+    list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
+    results = []
+    for loop in range(len(list_df)-1):
+        ### First set in right order
+        list_df[loop+1] = list_df[loop+1][total_save[loop][type].index]
 
-    ### Add one
-    list_df[loop+1] = list_df[loop+1] + 1
+        ### Add one
+        list_df[loop+1] += 1
 
-    ### Mutiply first row
-    list_df[loop+1].iloc[0] = list_df[loop+1].iloc[0] * total_save[loop]['IV']
+        ### Mutiply first row
+        list_df[loop+1].iloc[0] *= total_save[loop][type]
 
-    ### Final Return
-    results.append(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1)
- 
+        ### Final Return
+        results.append(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1)
+    #plt.plot(results, label = type)
+    #print(type,'\n')
+    #print(np.mean(np.array(results)))
+    #print(np.std(np.array(results)))
+    #print(np.mean(np.array(results))/np.std(np.array(results)))
+'''
+'''
+plt.legend()
+plt.show()
+
+print(type)
 print(results)
 np.cumprod(np.array(results) + 1)[-1]-1
 
@@ -238,3 +319,10 @@ np.cumprod(np.array(results) + 1)[-1]-1
 n = len(df)/30
 np.array_split(df, 30)
 '''
+
+import pickle as pk
+
+with open(rnum + "pandas_frameswreturns.pk",'wb') as file_:
+    pk.dump(list_df, file_)
+with open(rnum + "weights.pk",'wb') as file_:
+    pk.dump(total_save, file_)
