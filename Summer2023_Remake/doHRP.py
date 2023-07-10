@@ -113,7 +113,7 @@ def getFilingURLSin(TICKERS,API_KEY):
                 "sort": [{ "filedAt": { "order": "desc" } }]
             }
             response = queryApi.get_filings(payload)
-            print(len(response["filings"]))
+            ####print(len(response["filings"]))
             if len(response["filings"]) == 0:
                 break
             #print(pd.DataFrame.from_records(response['filings']))
@@ -199,23 +199,23 @@ def final_fun(df, TICKERS, keep_unclean):
     tbhrp = getRecBipart(cov, sortIx)
 
     # Print HRP and TB-HRP values
-    print("HRP Values:")
-    print(hrp.sort_values(ascending=False))
+    ####print("HRP Values:")
+    ####print(hrp.sort_values(ascending=False))
     save_dict['HRP'] = hrp.sort_values(ascending=False)
-    print("TB-HRP Values:")
-    print(tbhrp.sort_values(ascending=False))
+    ####print("TB-HRP Values:")
+    ####print(tbhrp.sort_values(ascending=False))
     save_dict['TBHRP'] = tbhrp.sort_values(ascending=False)
 
     ###Minimum Variance
-    print("Minimum Variance:\n",)
-    print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
+    ####print("Minimum Variance:\n",)
+    ####print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
     save_dict['MV'] = pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False)
 
     #### Inverse Variance
-    print("Inverse Variance:\n",)
+    ####print("Inverse Variance:\n",)
     iv_weights = df.std().values
     iv_weights = iv_weights / np.linalg.norm(iv_weights, ord = 1)
-    print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
+    ####print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
     save_dict['IV'] = pd.Series(iv_weights, df.columns).sort_values(ascending = False)
 
     return save_dict

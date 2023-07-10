@@ -32,7 +32,7 @@ class GenerateSIMMAT:
                 "sort": [{ "filedAt": { "order": "desc" } }]
             }
             response = queryApi.get_filings(payload)
-            print(len(response["filings"]))
+            ####print(len(response["filings"]))
             if len(response["filings"]) == 0:
                 break
             #print(pd.DataFrame.from_records(response['filings']))
