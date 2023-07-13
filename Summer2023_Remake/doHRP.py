@@ -286,7 +286,7 @@ for tpe in ['HRP', 'TBHRP', 'IV', 'EQ','MV']:
     n = 30
     for x in total_save:
         x['EQ'] = pd.Series([1/n for x in range(n)], index = x['HRP'].index)
-    list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
+    list_df = ldf
     results = []
     for loop in range(len(list_df)-1):
         ### First set in right order
@@ -301,10 +301,10 @@ for tpe in ['HRP', 'TBHRP', 'IV', 'EQ','MV']:
         ### Final Return
         results.append(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1)
     #plt.plot(results, label = type)
-    #print(type,'\n')
-    #print(np.mean(np.array(results)))
-    #print(np.std(np.array(results)))
-    #print(np.mean(np.array(results))/np.std(np.array(results)))
+    print(type)
+    print(np.mean(np.array(results)))
+    print(np.std(np.array(results)))
+    print(np.mean(np.array(results))/np.std(np.array(results)),'\n')
 '''
 '''
 plt.legend()
