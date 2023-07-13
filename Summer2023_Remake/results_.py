@@ -1,50 +1,55 @@
-import pickle as pk
-import pandas as pd
-from os import listdir
-from os.path import isfile, join
+import os
+import pickle
 import numpy as np
+import pandas as pd
 
-def results_now(weights, pd_frames):
-    results = {x :[] for x in ['HRP', 'TBHRP', 'IV', 'EQ','MV']}
-    n = 30
-    for tpe in ['HRP', 'TBHRP', 'IV', 'EQ','MV']:
-        for x in weights:
-            x['EQ'] = pd.Series([1/n for x in range(n)], index = x['HRP'].index)
-        pd_frames_ = pd_frames.copy()
-        for loop in range(len(pd_frames_)-1):
-            ### First set in right order
-            pd_frames_[loop+1] = pd_frames_[loop+1][weights[loop][tpe].index]
+def calculate_results(weights, pd_frames):
+    result_categories = ['HRP', 'TBHRP', 'IV', 'EQ','MV']
+    results = {category: [] for category in result_categories}
+    num_results = 30
 
-            ### Add one
-            pd_frames_[loop+1] += 1
+    for category in result_categories:
+        for weight in weights:
+            weight['EQ'] = pd.Series([1/num_results for _ in range(num_results)], index=weight['HRP'].index)
 
-            ### Mutiply first row
-            pd_frames_[loop+1].iloc[0] *= weights[loop][tpe]
+        pd_frames_copy = pd_frames.copy()
 
-            ### Final Return
-            results[tpe].append(pd_frames_[loop+1].cumprod(axis = 0).iloc[-1].sum()-1)
+        for index in range(len(pd_frames_copy)-1):
+            # Set in right order
+            pd_frames_copy[index+1] = pd_frames_copy[index+1][weights[index][category].index]
+
+            # Add one to DataFrame
+            pd_frames_copy[index+1] += 1
+
+            # Multiply first row
+            pd_frames_copy[index+1].iloc[0] *= weights[index][category]
+
+            # Final Return
+            results[category].append(pd_frames_copy[index+1].cumprod(axis=0).iloc[-1].sum() - 1)
+    
     return results
 
 home_dir_frames = r"C:\Users\blake\Downloads\pd_frames\\"
 home_dir_weights = r"C:\Users\blake\Downloads\weights\\"
 
+frames_files = [file for file in os.listdir(home_dir_frames) if os.path.isfile(os.path.join(home_dir_frames, file))]
+weights_files = [file for file in os.listdir(home_dir_weights) if os.path.isfile(os.path.join(home_dir_weights, file))]
 
-onlyfiles_frame = [f for f in listdir(home_dir_frames) if isfile(join(home_dir_frames, f))]
-onlyfiles_weights = [f for f in listdir(home_dir_weights) if isfile(join(home_dir_weights, f))]
-### Load files here\
-for f, w in zip(onlyfiles_frame,onlyfiles_weights):
-    with open(home_dir_frames + f, 'rb') as _:
-        frame = pk.load(_)
-    with open(home_dir_weights + w, 'rb') as _:
-        weights = pk.load(_)
-    rs = results_now(weights, frame)
-    if len(rs['TBHRP']) > 0:
-        print(f)
-        print(w)
-        print(np.mean(np.array(rs['TBHRP'])))
-        print(np.std(np.array(rs['TBHRP'])))
-        print(np.mean(np.array(rs['TBHRP']))/np.std(np.array(rs['TBHRP'])))
+for frame_file, weight_file in zip(frames_files, weights_files):
+    with open(os.path.join(home_dir_frames, frame_file), 'rb') as file:
+        frame = pickle.load(file)
+    with open(os.path.join(home_dir_weights, weight_file), 'rb') as file:
+        weights = pickle.load(file)
 
+    results = calculate_results(weights, frame)
+
+    if results['TBHRP']:
+        print(frame_file)
+        print(weight_file)
+        tbhrp_results = np.array(results['TBHRP'])
+        print(np.mean(tbhrp_results))
+        print(np.std(tbhrp_results))
+        print(np.mean(tbhrp_results) / np.std(tbhrp_results))
 
 '''
 plt.legend()
