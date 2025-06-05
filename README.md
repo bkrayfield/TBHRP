@@ -83,6 +83,7 @@ Project Structure
     ├── results_.py
     ├── top500Total.csv (example data file - not included in repo, user must provide)
     └── README.md
+```
 
 Contributing
 
