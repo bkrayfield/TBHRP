@@ -71,9 +71,15 @@ The doHRP.py script expects a CSV file named top500Total.csv containing historic
 
 1. Generate Similarity Matrices and Weights:
     Execute doHRP.py to fetch filing data, compute similarity matrices, and calculate portfolio weights for different strategies. This script will save the results as pickle files (<rnum>pandas_frameswreturns.pk and <rnum>weights.pk, where rnum is a random number generated in the script).
+    ```bash
+    python doHRP.py
+    ```
 
 2. Analyze Results:
     Execute results_.py to load the saved results and calculate performance metrics. Make sure to adjust the home_dir_frames and home_dir_weights variables in results_.py to the directory where your pickle files are saved.
+    ```
+    python results_.py
+    ```
 
 Project Structure
 ```bash
