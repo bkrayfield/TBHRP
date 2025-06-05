@@ -53,7 +53,7 @@ This script is designed to load the saved portfolio weights and pandas dataframe
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone [https://github.com/bkrayfield/TBHRP.git](https://github.com/bkrayfield/TBHRP.git)
+   git clone https://github.com/bkrayfield/TBHRP.git
    cd TBHRP
    ```
 
