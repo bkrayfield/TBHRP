@@ -25,7 +25,7 @@ class GenerateSIMMAT:
             payload = {
                 "query": {
                     "query_string": {
-                        "query": f"ticker:({self.ticker_str}) AND formType:\"10-K\""
+                        "query": f"ticker:({self.ticker_str}) AND formType:\"10-K\" AND filedAt:[{str(self.YEARS[0])}-01-01 TO {str(self.YEARS[1])}-12-31]"
                     }
                 },
                 "from": f"{from_batch}",

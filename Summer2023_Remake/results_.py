@@ -6,7 +6,7 @@ import pandas as pd
 def calculate_results(weights, pd_frames):
     result_categories = ['HRP', 'TBHRP', 'IV', 'EQ','MV']
     results = {category: [] for category in result_categories}
-    num_results = 30
+    num_results = len(weights[0]['HRP'])
 
     for category in result_categories:
         for weight in weights:
@@ -29,12 +29,15 @@ def calculate_results(weights, pd_frames):
     
     return results
 
-home_dir_frames = r"C:\Users\blake\Downloads\pd_frames\\"
-home_dir_weights = r"C:\Users\blake\Downloads\weights\\"
+home_dir_frames = "C:\\Users\\n00812642\\Downloads\\"
+home_dir_weights = "C:\\Users\\n00812642\\Downloads\\"
 
 frames_files = [file for file in os.listdir(home_dir_frames) if os.path.isfile(os.path.join(home_dir_frames, file))]
 weights_files = [file for file in os.listdir(home_dir_weights) if os.path.isfile(os.path.join(home_dir_weights, file))]
 
+frames_files = [x for x in frames_files if x.find("frameswreturns.pk") > 0]
+weights_files = [x for x in weights_files if x.find("weights.pk") > 0]
+                 
 for frame_file, weight_file in zip(frames_files, weights_files):
     with open(os.path.join(home_dir_frames, frame_file), 'rb') as file:
         frame = pickle.load(file)
@@ -43,10 +46,9 @@ for frame_file, weight_file in zip(frames_files, weights_files):
 
     results = calculate_results(weights, frame)
 
-    if results['TBHRP']:
-        print(frame_file)
-        print(weight_file)
-        tbhrp_results = np.array(results['TBHRP'])
+    for KEY in results.keys():
+        print(KEY)
+        tbhrp_results = np.array(results[KEY])
         print(np.mean(tbhrp_results))
         print(np.std(tbhrp_results))
         print(np.mean(tbhrp_results) / np.std(tbhrp_results))

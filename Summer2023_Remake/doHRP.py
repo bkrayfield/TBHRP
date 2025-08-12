@@ -14,7 +14,7 @@ from warnings import simplefilter
 simplefilter("ignore", ClusterWarning)
 
 ###This part may be deleated in the future
-API_KEY = "671c64aa0b622cba50aeaf51f54b8ee209467479d94a16c9e4bfc7badc36abf9"
+API_KEY = "560ede03797de9d5d878864b5af76160cda1d81765b5a2e92dda4faa3f03cf2f"
 
 YEARS = [2016,2020]
 
@@ -115,6 +115,7 @@ def getFilingURLSin(TICKERS,API_KEY):
             response = queryApi.get_filings(payload)
             ####print(len(response["filings"]))
             if len(response["filings"]) == 0:
+                print("none")
                 break
             #print(pd.DataFrame.from_records(response['filings']))
             temp_data = pd.DataFrame.from_records(response['filings'])
@@ -132,7 +133,7 @@ def getFilingURLSin(TICKERS,API_KEY):
 
 
 # Read the CSV file
-df = pd.read_csv(r"C:\Users\blake\top500Total.csv")
+df = pd.read_csv(r"C:\Users\n00812642\OneDrive - University of North Florida\Research\TBHRP\Revision 1\HRP\top500Total.csv")
 itit__ = getFilingURLSin(df.columns, API_KEY)
 
 
@@ -152,7 +153,7 @@ df = return_.copy()
 
 
 # Sample 10 columns randomly and drop rows with NaN values
-df = df.sample(30, axis=1).dropna()
+df = df.sample(10, axis=1).dropna()
 
 # Get the tickers from columns
 TICKERS = df.columns.to_list()
@@ -249,7 +250,7 @@ df = return_.copy()
 
 
 # Sample 10 columns randomly and drop rows with NaN values
-df = df.sample(30, axis=1).dropna()
+df = df.sample(10, axis=1).dropna()
 
 # Get the tickers from columns
 TICKERS = df.columns.to_list()
@@ -322,7 +323,9 @@ np.array_split(df, 30)
 
 import pickle as pk
 
-with open(rnum + "pandas_frameswreturns.pk",'wb') as file_:
+OUTPUT_DIR = 'C:\\Users\\n00812642\\Downloads\\'
+
+with open(OUTPUT_DIR + rnum + "pandas_frameswreturns.pk",'wb') as file_:
     pk.dump(list_df, file_)
-with open(rnum + "weights.pk",'wb') as file_:
+with open(OUTPUT_DIR + rnum + "weights.pk",'wb') as file_:
     pk.dump(total_save, file_)
