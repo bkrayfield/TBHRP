@@ -6,7 +6,6 @@ import numpy as np
 from sec_api import QueryApi
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-#API_KEY = "671c64aa0b622cba50aeaf51f54b8ee209467479d94a16c9e4bfc7badc36abf9"
 
 #TICKERS = ["MSFT","GM","PG","IBM","AA"]
 #YEARS = [2012,2022]
