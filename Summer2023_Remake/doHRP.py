@@ -13,8 +13,6 @@ from warnings import simplefilter
 #from classhrp import GenerateSIMMAT
 simplefilter("ignore", ClusterWarning)
 
-###This part may be deleated in the future
-API_KEY = "560ede03797de9d5d878864b5af76160cda1d81765b5a2e92dda4faa3f03cf2f"
 
 YEARS = [2016,2020]
 
