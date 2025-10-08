@@ -1,329 +1,225 @@
-#import re
-#import sys
-from sklearn.feature_extraction.text import TfidfVectorizer
-import matplotlib.pyplot as plt
-import scipy.cluster.hierarchy as sch,random,numpy as np,pandas as pd
-from os import listdir
-from os.path import isfile, join
-#import math
-#import pickle
-#from sklearn.covariance import LedoitWolf
-from scipy.cluster.hierarchy import ClusterWarning
+import os
+import pickle as pk
 from warnings import simplefilter
-#from classhrp import GenerateSIMMAT
+import numpy as np
+import pandas as pd
+import scipy.cluster.hierarchy as sch
+from scipy.cluster.hierarchy import ClusterWarning
+
+# Assumes 'classhrp.py' is in the same directory
+from classhrp import GenerateSIMMAT, QueryApi
+
 simplefilter("ignore", ClusterWarning)
 
-
-YEARS = [2016,2020]
-
-rnum = "123"
-
-
-# On 20151227 by MLdP <lopezdeprado@lbl.gov>
-# Hierarchical Risk Parity
-#------------------------------------------------------------------------------
-def getIVP(cov,**kargs):
-    # Compute the inverse-variance portfolio
-    ivp=1./np.diag(cov)
-    ivp/=ivp.sum()
+# ==============================================================================
+# SECTION 1: CORE HRP ALGORITHM HELPERS
+# ==============================================================================
+def getIVP(cov, **kargs):
+    ivp = 1. / np.diag(cov)
+    ivp /= ivp.sum()
     return ivp
-#------------------------------------------------------------------------------
-def getClusterVar(cov,cItems):
-    # Compute variance per cluster
-    cov_=cov.loc[cItems,cItems] # matrix slice
 
-    w_=getIVP(cov_).reshape(-1,1)
-    cVar=np.dot(np.dot(w_.T,cov_),w_)[0,0]
+def getClusterVar(cov, cItems):
+    cov_ = cov.loc[cItems, cItems]
+    w_ = getIVP(cov_).reshape(-1, 1)
+    cVar = np.dot(np.dot(w_.T, cov_), w_)[0, 0]
     return cVar
-#------------------------------------------------------------------------------
+
 def getQuasiDiag(link):
-    # Sort clustered items by distance
     link = link.astype(int)
     sortIx = pd.Series([link[-1, 0], link[-1, 1]])
-    numItems = link[-1, 3] # number of original items
+    numItems = link[-1, 3]
     while sortIx.max() >= numItems:
-        sortIx.index = range(0, sortIx.shape[0] * 2, 2) # make space
-        df0 = sortIx[sortIx >= numItems] # find clusters
-        i = df0.index
-        j = df0.values - numItems
-        sortIx[i] = link[j, 0] # item 1
+        sortIx.index = range(0, sortIx.shape[0] * 2, 2)
+        df0 = sortIx[sortIx >= numItems]
+        i, j = df0.index, df0.values - numItems
+        sortIx[i] = link[j, 0]
         df0 = pd.Series(link[j, 1], index=i + 1)
-        sortIx = pd.concat([sortIx, df0]) # item 2
-        sortIx = sortIx.sort_index() # re-sort
-        sortIx.index = range(sortIx.shape[0]) # re-index
+        sortIx = pd.concat([sortIx, df0])
+        sortIx = sortIx.sort_index()
+        sortIx.index = range(sortIx.shape[0])
     return sortIx.tolist()
-#------------------------------------------------------------------------------
-def getRecBipart(cov,sortIx):
-    # Compute HRP alloc
-    w=pd.Series(1,index=sortIx)
-    cItems=[sortIx] # initialize all items in one cluster
-    #print(cItems)
-    while len(cItems)>0:
-        cItems=[i[j:k] for i in cItems for j,k in ((0,len(i)//2), (len(i)//2,len(i))) if len(i)>1]
-        #print(cItems)# bi-section
-        for i in range(0,len(cItems),2): # parse in pairs
-            cItems0=cItems[i] # cluster 1
-            cItems1=cItems[i+1] # cluster 2
-            #print(cItems0, cItems1)
-            cVar0=getClusterVar(cov,cItems0)
-            cVar1=getClusterVar(cov,cItems1)
-            #print("Cluster Var: ",cVar0, cVar1)
-            alpha=1-cVar0/(cVar0+cVar1)
-            w[cItems0]*=alpha # weight 1
-            w[cItems1]*=1-alpha # weight 2
+
+def getRecBipart(cov, sortIx):
+    w = pd.Series(1, index=sortIx)
+    cItems = [sortIx]
+    while len(cItems) > 0:
+        cItems = [i[j:k] for i in cItems for j, k in ((0, len(i) // 2), (len(i) // 2, len(i))) if len(i) > 1]
+        for i in range(0, len(cItems), 2):
+            cItems0, cItems1 = cItems[i], cItems[i + 1]
+            cVar0, cVar1 = getClusterVar(cov, cItems0), getClusterVar(cov, cItems1)
+            alpha = 1 - cVar0 / (cVar0 + cVar1)
+            w[cItems0] *= alpha
+            w[cItems1] *= 1 - alpha
     return w
-#------------------------------------------------------------------------------
+
 def correlDist(corr):
-    # A distance matrix based on correlation, where 0<=d[i,j]<=1
-    # This is a proper distance metric
-    dist=((1-corr)/2.)**.5 # distance matrix
-    return dist
- 
+    return ((1 - corr) / 2.) ** 0.5
+
 def min_var(cov):
     icov = np.linalg.inv(np.matrix(cov))
-    one = np.ones((icov.shape[0],1))
-    weights = (icov*one)/(one.T*icov*one)
-    return weights
+    one = np.ones((icov.shape[0], 1))
+    return (icov * one) / (one.T * icov * one)
 
-def convert_to_mat(df_):
-    keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS)
-    keep, unclean = keep.create_simmat()
-
-    mat_ = np.asmatrix(np.split(unclean.values[0],5))[1,0]
-
-import pandas as pd
-import numpy as np
-import scipy.cluster.hierarchy as sch
-
-def getFilingURLSin(TICKERS,API_KEY):
+# ==============================================================================
+# SECTION 2: DATA FETCHING HELPER
+# ==============================================================================
+def getFilingURLSin(tickers, api_key):
     total_response = pd.DataFrame()
-    queryApi = QueryApi(api_key=API_KEY)
-    for from_batch in range(0, 9800, 200): 
+    queryApi = QueryApi(api_key=api_key)
+    ticker_str = ", ".join(map(str, tickers))
+    for from_batch in range(0, 9800, 200):
         try:
             payload = {
-                "query": {
-                    "query_string": {
-                        "query": "ticker:({0}) AND formType:\"10-K\"".format(", ".join(map(str, TICKERS)))
-                    }
-                },
-                "from": "{0}".format(from_batch),
-                "size": "200", # dont change this
-                "sort": [{ "filedAt": { "order": "desc" } }]
+                "query": {"query_string": {"query": f"ticker:({ticker_str}) AND formType:\"10-K\""}},
+                "from": str(from_batch), "size": "200", "sort": [{"filedAt": {"order": "desc"}}]
             }
             response = queryApi.get_filings(payload)
-            ####print(len(response["filings"]))
-            if len(response["filings"]) == 0:
-                print("none")
-                break
-            #print(pd.DataFrame.from_records(response['filings']))
+            if not response["filings"]: break
             temp_data = pd.DataFrame.from_records(response['filings'])
-            temp_data = temp_data.sort_values(['ticker','filedAt'], ascending = False)
             temp_data['fyear'] = pd.to_datetime(temp_data['periodOfReport'], errors='coerce').dt.year
-            #temp_data = temp_data[temp_data.fyear.isin(range(self.YEARS[0]-1,self.YEARS[1]+1))]
             temp_data['filedAt'] = pd.to_datetime(temp_data['filedAt'].str[:10])
-            temp_data = temp_data.groupby(["ticker",'fyear']).head(1)
-            temp_data = temp_data.reset_index()
-            total_response = pd.concat([total_response,temp_data])
-        except:
+            temp_data = temp_data.groupby(["ticker", 'fyear']).head(1)
+            total_response = pd.concat([total_response, temp_data])
+        except Exception as e:
+            print(f"An error occurred during filing fetch: {e}")
             break
-    return total_response
+    return total_response.reset_index(drop=True)
 
+# ==============================================================================
+# SECTION 3: MAIN ANALYSIS FUNCTION
+# ==============================================================================
+def run_hrp_analysis(input_csv_path, output_dir, run_id, years, api_key=None, 
+                     preloaded_urls_path=None, preloaded_texts_path=None, 
+                     sample_size=10, window_size=30):
+    """
+    Runs HRP analysis in online or preloaded mode.
 
-
-# Read the CSV file
-df = pd.read_csv(r"C:\Users\n00812642\OneDrive - University of North Florida\Research\TBHRP\Revision 1\HRP\top500Total.csv")
-itit__ = getFilingURLSin(df.columns, API_KEY)
-
-
-# Extract 'idx' column as date vector
-date_vector = df[['idx']]
-
-# Compute log returns
-return_ = np.log(df[list(df.columns)[1:]]) - np.log(df[list(df.columns)[1:]].shift(1))
-keep_list = list(set([x for x in itit__.ticker.tolist() if x in df.columns]))
-return_.index = date_vector
-return_ = return_[keep_list]
-
-
-# Update the dataframe with log returns and set index
-df = return_.copy()
-
-
-
-# Sample 10 columns randomly and drop rows with NaN values
-df = df.sample(10, axis=1).dropna()
-
-# Get the tickers from columns
-TICKERS = df.columns.to_list()
-
-# Generate SIMMAT using API_KEY and YEARS
-YEARS_TEXT = [YEARS[0]- 1, YEARS[1]]
-
-
-
-#keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
-#keep, unclean = keep.create_simmat()
-
-def final_fun(df, TICKERS, keep_unclean):
-    save_dict = {}
-    # Compute covariance and correlation matrices
-    cov, corr = df.cov(), df.corr()
-    save_dict['Dates'] = df.index
-
-    ### Traditional HRP
-    dist = correlDist(corr)
-    link = sch.linkage(dist, 'single')
-    sortIx = getQuasiDiag(link)
-    sortIx = corr.index[sortIx].tolist()
-    hrp = getRecBipart(cov, sortIx)
-
-    # Compute pairwise similarity using TF-IDF
-    tfidf = np.asmatrix(np.split(keep_unclean.values[0], len(TICKERS)))
-    pairwise_similarity = np.asarray((tfidf * tfidf.T))
-
-    # Adjust pairwise similarity to avoid sqrt error
-    pairwise_similarity = ((1 - pairwise_similarity) / 2.)
-    np.fill_diagonal(pairwise_similarity, 1)
-    pairwise_similarity = np.sqrt(pairwise_similarity)
-    np.fill_diagonal(pairwise_similarity, 0)
-    dist = pairwise_similarity
-    np.nan_to_num(dist, copy=False)
-
-    # Sort and link
-    link = sch.linkage(dist, 'single')
-    sortIx = getQuasiDiag(link)
-    sortIx = corr.index[sortIx].tolist()
-
-    # Capital allocation with text-based sorting
-    tbhrp = getRecBipart(cov, sortIx)
-
-    # Print HRP and TB-HRP values
-    ####print("HRP Values:")
-    ####print(hrp.sort_values(ascending=False))
-    save_dict['HRP'] = hrp.sort_values(ascending=False)
-    ####print("TB-HRP Values:")
-    ####print(tbhrp.sort_values(ascending=False))
-    save_dict['TBHRP'] = tbhrp.sort_values(ascending=False)
-
-    ###Minimum Variance
-    ####print("Minimum Variance:\n",)
-    ####print(pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False))
-    save_dict['MV'] = pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending = False)
-
-    #### Inverse Variance
-    ####print("Inverse Variance:\n",)
-    iv_weights = df.std().values
-    iv_weights = iv_weights / np.linalg.norm(iv_weights, ord = 1)
-    ####print(pd.Series(iv_weights, df.columns).sort_values(ascending = False))
-    save_dict['IV'] = pd.Series(iv_weights, df.columns).sort_values(ascending = False)
-
-    return save_dict
-
-#final_fun(df, TICKERS)
-
-
-
-
-
-
-'''
-
-#### This is just to plot the dendrogram
-plt.style.use("bmh")
-
-ax = plt.gca()
-ax.get_yaxis().set_visible(False)
-ax.grid(False)
-ax.set(frame_on=False)
-sch.dendrogram(link, labels = sortIx)
-plt.show()
-####
-
-'''
-# Update the dataframe with log returns and set index
-df = return_.copy()
-#df.index = date_vector
-#keep_list = [x for x in itit__.ticker.tolist() if x in df.columns]
-#df = df[keep_list]
-
-
-# Sample 10 columns randomly and drop rows with NaN values
-df = df.sample(10, axis=1).dropna()
-
-# Get the tickers from columns
-TICKERS = df.columns.to_list()
-
-# Generate SIMMAT using API_KEY and YEARS
-YEARS_TEXT = [YEARS[0]- 1, YEARS[1]]
-
-# Generate SIMMAT using API_KEY and YEARS
-keep = GenerateSIMMAT(API_KEY, TICKERS, YEARS_TEXT)
-keep, unclean = keep.create_simmat()
-
-df.index = pd.to_datetime([x[0] for x in df.index])
-df = df[(df.index >= unclean.index.min()) & (df.index <= unclean.index.max())]
-n = 30
-list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
-
-
-
-total_save = []
-for frame_num in list_df:
-
-    ### Get max date and find the right matrix for the optimization
-    max_date = frame_num.index.max()
-    keep_unclean = unclean[(unclean.index <= max_date)]
-    keep_unclean = keep_unclean[(keep_unclean.index == keep_unclean.index.max())]
+    To run in preloaded mode, provide paths to preloaded data files. These files can
+    be generated by running once in online mode and saving the necessary data.
     
-    total_save.append(final_fun(frame_num, TICKERS, keep_unclean))
+    Args:
+        api_key (str, optional): API key for sec-api.io. Required for online mode.
+        preloaded_urls_path (str, optional): Path to pickled filing URL DataFrame.
+        preloaded_texts_path (str, optional): Path to pickled filing texts dictionary.
+        ... other args
+    """
+    is_offline = preloaded_urls_path and preloaded_texts_path
+    if not is_offline and not api_key:
+        raise ValueError("An API key must be provided for online mode.")
+    print("Running in preloaded mode." if is_offline else "Running in preloaded mode.")
 
-'''
-######################### Change this ###########################
-### This is to intrepret returns
-for tpe in ['HRP', 'TBHRP', 'IV', 'EQ','MV']:
-    type = tpe  #### 'HRP', 'TBHRP', 'MV', 'IV', 'EQ'
-    n = 30
-    for x in total_save:
-        x['EQ'] = pd.Series([1/n for x in range(n)], index = x['HRP'].index)
-    list_df = ldf
-    results = []
-    for loop in range(len(list_df)-1):
-        ### First set in right order
-        list_df[loop+1] = list_df[loop+1][total_save[loop][type].index]
-
-        ### Add one
-        list_df[loop+1] += 1
-
-        ### Mutiply first row
-        list_df[loop+1].iloc[0] *= total_save[loop][type]
-
-        ### Final Return
-        results.append(list_df[loop+1].cumprod(axis = 0).iloc[-1].sum()-1)
-    #plt.plot(results, label = type)
-    print(type)
-    print(np.mean(np.array(results)))
-    print(np.std(np.array(results)))
-    print(np.mean(np.array(results))/np.std(np.array(results)),'\n')
-'''
-'''
-plt.legend()
-plt.show()
-
-print(type)
-print(results)
-np.cumprod(np.array(results) + 1)[-1]-1
-
+    # --- Step 1: Load Price Data ---
+    print("Step 1: Loading and preparing price data...")
+    price_df = pd.read_csv(input_csv_path, index_col=0)
+    price_df.index = pd.to_datetime(price_df.index)
     
-###Potential Speed up
-n = len(df)/30
-np.array_split(df, 30)
-'''
+    # --- Step 2: Get Filing Metadata (Online or preloaded mode) ---
+    print("Step 2: Identifying tickers with available 10-K filings...")
+    preloaded_texts_data = None
+    if is_offline:
+        itit__ = pd.read_csv(preloaded_urls_path)
+        itit__ = itit__.sort_values(['ticker','filedAt'], ascending=False)
+        itit__['fyear'] = pd.to_datetime(itit__['periodOfReport'], errors='coerce').dt.year
+        itit__['filedAt'] = pd.to_datetime(itit__['filedAt'].str[:10])
+        itit__ = itit__.groupby(["ticker",'fyear']).head(1)
+        with open(preloaded_texts_path, 'rb') as f: preloaded_texts_data = pk.load(f)
+    else:
+        itit__ = getFilingURLSin(price_df.columns, api_key)
+    
+    available_tickers = list(set(itit__.ticker.tolist()) & set(price_df.columns))
 
-import pickle as pk
+    # --- Step 3: Sample Tickers ---
+    print(f"Step 3: Calculating returns and sampling {sample_size} tickers...")
+    returns_df = np.log(price_df[available_tickers]).diff().dropna(how='all')
+    if preloaded_texts_path is not None:
+        sampled_tickers = returns_df.columns.tolist()
+    else:
+        sampled_tickers = returns_df.sample(n=sample_size, axis=1, random_state=99).columns.tolist()
+    df = returns_df[sampled_tickers].dropna()
+    print(f"Selected tickers: {sampled_tickers}")
 
-OUTPUT_DIR = 'C:\\Users\\n00812642\\Downloads\\'
+    # --- Step 4: Generate Similarity Matrix (Online or preloaded mode) ---
+    print("Step 4: Generating text-based similarity matrices...")
+    years_text = [years[0] - 1, years[1]]
+    simmat_generator_args = {'TICKERS': sampled_tickers, 'YEARS': years_text}
+    
+    if is_offline:
+        simmat_generator_args['preloaded_filing_urls'] = itit__[itit__['ticker'].isin(sampled_tickers)]
+        simmat_generator_args['preloaded_filing_texts'] = {t: preloaded_texts_data.get(t, {}) for t in sampled_tickers}
+    else:
+        simmat_generator_args['api_key'] = api_key
+        
+    simmat_generator = GenerateSIMMAT(**simmat_generator_args)
+    _, unclean = simmat_generator.create_simmat()
+    
+    if unclean.empty:
+        print("Failed to generate similarity matrix. Aborting.")
+        return
 
-with open(OUTPUT_DIR + rnum + "pandas_frameswreturns.pk",'wb') as file_:
-    pk.dump(list_df, file_)
-with open(OUTPUT_DIR + rnum + "weights.pk",'wb') as file_:
-    pk.dump(total_save, file_)
+    # --- Nested Helper Function (Unchanged) ---
+    def calculate_weights(df, tickers_list, keep_unclean):
+        save_dict = {}
+        cov, corr = df.cov(), df.corr()
+        dist_hrp = correlDist(corr)
+        link_hrp = sch.linkage(dist_hrp, 'single')
+        sortIx_hrp = getQuasiDiag(link_hrp)
+        hrp = getRecBipart(cov, corr.index[sortIx_hrp].tolist())
+        save_dict['HRP'] = hrp.sort_values(ascending=False)
+        tfidf = np.asmatrix(np.split(keep_unclean.values[0], len(tickers_list)))
+        pairwise_similarity = np.asarray((tfidf * tfidf.T))
+        dist_tbhrp = np.sqrt(((1 - pairwise_similarity) / 2.))
+        np.fill_diagonal(dist_tbhrp, 0)
+        link_tbhrp = sch.linkage(np.nan_to_num(dist_tbhrp, copy=False), 'single')
+        sortIx_tbhrp = getQuasiDiag(link_tbhrp)
+        tbhrp = getRecBipart(cov, corr.index[sortIx_tbhrp].tolist())
+        save_dict['TBHRP'] = tbhrp.sort_values(ascending=False)
+        save_dict['MV'] = pd.Series(np.asarray(min_var(cov).T)[0], cov.columns).sort_values(ascending=False)
+        iv_weights = 1 / df.std()
+        save_dict['IV'] = (iv_weights / iv_weights.sum()).sort_values(ascending=False)
+        return save_dict
+
+    # --- Steps 5, 6, 7 (Unchanged) ---
+    print("Step 5: Aligning data and creating rolling windows...")
+    df = df[(df.index >= unclean.index.min()) & (df.index <= unclean.index.max())]
+    list_df = [df.iloc[i:i + window_size] for i in range(0, df.shape[0], window_size) if i+window_size <= df.shape[0]]
+    print("Step 6: Running optimization over all windows...")
+    total_save = []
+    for i, frame in enumerate(list_df):
+        max_date = frame.index.max()
+        relevant_sim_matrix = unclean[(unclean.index <= max_date)]
+        if relevant_sim_matrix.empty: continue
+        total_save.append(calculate_weights(frame, sampled_tickers, relevant_sim_matrix.iloc[[-1]]))
+    print("Step 7: Saving results to disk...")
+    os.makedirs(output_dir, exist_ok=True)
+    with open(os.path.join(output_dir, f"{run_id}_pandas_frames.pk"), 'wb') as f: pk.dump(list_df, f)
+    with open(os.path.join(output_dir, f"{run_id}_weights.pk"), 'wb') as f: pk.dump(total_save, f)
+    print("Analysis complete.")
+
+# ==============================================================================
+# SECTION 4: EXAMPLE USAGE
+# ==============================================================================
+if __name__ == '__main__':
+    API_KEY = "YOUR_API_KEY_HERE" 
+    INPUT_FILE = os.path.join("Data", "top500Total.csv")
+    OUTPUT_DIR = "Results"
+    RUN_ID = "123"
+    YEARS = [2016, 2020]
+    
+    # --- CHOOSE YOUR MODE ---
+    # To run preloaded, provide paths to your preloaded data files.
+    # To run preloaded, set these to None and provide your API_KEY above.
+    PRELOADED_URLS_FILE = os.path.join("OfflineData", "filing_urls.pk")
+    PRELOADED_TEXTS_FILE = os.path.join("OfflineData", "filing_texts.pk")
+    
+    # Set to None to run in online mode
+    # PRELOADED_URLS_FILE = None
+    # PRELOADED_TEXTS_FILE = None
+    
+    # --- Execution ---
+    run_hrp_analysis(
+        input_csv_path=INPUT_FILE, output_dir=OUTPUT_DIR, run_id=RUN_ID,
+        years=YEARS, api_key=API_KEY,
+        preloaded_urls_path=PRELOADED_URLS_FILE,
+        preloaded_texts_path=PRELOADED_TEXTS_FILE
+    )
