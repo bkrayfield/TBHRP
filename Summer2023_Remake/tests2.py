@@ -27,9 +27,7 @@ mw.head()
 mw.dropna(inplace = True)
 
 ### 
-B50 = mw.iloc[:40].Ticker
-
-T50 = mw.iloc[-40:].Ticker
+T50 = mw.iloc[:50].Ticker
 
 
 
@@ -37,6 +35,7 @@ T50 = mw.iloc[-40:].Ticker
 TICKERS = T50.to_list()
 TICKERS = [x for x in TICKERS if x != "ANTM"]
 TICKERS = [x for x in TICKERS if x != "GOOGL"]
+TICKERS = [x for x in TICKERS if x not in ['GPS', 'ADS', 'CTL', 'COG', 'RE', 'ABC', 'UAA', 'PKI','LB','PEAK']]
 df = df[TICKERS]
 df.dropna(inplace = True)
 
@@ -52,7 +51,7 @@ keep, unclean = keep.create_simmat()
 df.index = pd.to_datetime([x[0] for x in df.index])
 
 df = df[(df.index >= unclean.index.min()) & (df.index <= unclean.index.max())]
-
+n = 50
 list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
 
 
@@ -69,7 +68,7 @@ for frame_num in list_df:
 
 import pickle as pk
 
-OUTPUT_DIR = 'C:\\Users\\n00812642\\Downloads\\'
+OUTPUT_DIR = "C:\\Users\\n00812642\\Desktop\\Results_TBHRP\\"
 
 with open(OUTPUT_DIR + rnum + "T50_frameswreturns.pk",'wb') as file_:
     pk.dump(list_df, file_)
@@ -109,18 +108,12 @@ mw.head()
 mw.dropna(inplace = True)
 
 ### 
-B50 = mw.iloc[:100].Ticker
+B50 = mw.iloc[-50:].Ticker
 
-T50 = mw.iloc[-100:].Ticker
-
-T50.sample(10, axis=1).dropna()
 
 # Get the tickers from columns
-TICKERST = T50.to_list()
-TICKERSB = B50.to_list()
-TICKERS = [x for x in TICKERS if x != "ANTM"]
-TICKERS = [x for x in TICKERS if x != "GOOGL"]
-TICKERS = [x for x in TICKERS if x not in ['GPS', 'ADS', 'CTL', 'COG', 'RE', 'ABC', 'UAA', 'PKI','LB','PEAK']]
+TICKERS = B50.to_list()
+
 df = df[TICKERS]
 df.dropna(inplace = True)
 
@@ -136,7 +129,7 @@ keep, unclean = keep.create_simmat()
 df.index = pd.to_datetime([x[0] for x in df.index])
 
 df = df[(df.index >= unclean.index.min()) & (df.index <= unclean.index.max())]
-
+n = 50
 list_df = [df[i:i+n] for i in range(0,df.shape[0],n)]
 
 
@@ -153,7 +146,7 @@ for frame_num in list_df:
 
 import pickle as pk
 
-OUTPUT_DIR = 'C:\\Users\\n00812642\\Downloads\\'
+OUTPUT_DIR = "C:\\Users\\n00812642\\Desktop\\Results_TBHRP\\"
 
 with open(OUTPUT_DIR + rnum + "B50_frameswreturns.pk",'wb') as file_:
     pk.dump(list_df, file_)
@@ -200,8 +193,8 @@ def calculate_results(weights, pd_frames):
     
     return results
 
-home_dir_frames = "C:\\Users\\n00812642\\Downloads\\"
-home_dir_weights = "C:\\Users\\n00812642\\Downloads\\"
+home_dir_frames = "C:\\Users\\n00812642\\Desktop\\Results_TBHRP\\"
+home_dir_weights = "C:\\Users\\n00812642\\Desktop\\Results_TBHRP\\"
 
 frames_files = [file for file in os.listdir(home_dir_frames) if os.path.isfile(os.path.join(home_dir_frames, file))]
 weights_files = [file for file in os.listdir(home_dir_weights) if os.path.isfile(os.path.join(home_dir_weights, file))]
