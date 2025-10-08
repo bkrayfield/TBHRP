@@ -41,7 +41,7 @@ def getQuasiDiag(link):
     return sortIx.tolist()
 
 def getRecBipart(cov, sortIx):
-    w = pd.Series(1, index=sortIx)
+    w = pd.Series(1.0, index=sortIx)
     cItems = [sortIx]
     while len(cItems) > 0:
         cItems = [i[j:k] for i in cItems for j, k in ((0, len(i) // 2), (len(i) // 2, len(i))) if len(i) > 1]
