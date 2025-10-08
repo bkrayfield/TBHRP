@@ -104,7 +104,7 @@ class GenerateSIMMAT:
         all_ = self.process_data()
         self.TICKERS.sort()
         vect = TfidfVectorizer(min_df=1, stop_words="english")
-        save_results = {max(a): (vect.fit_transform([data_[tic][a[i]] for i, tic in enumerate(self.TICKERS)]) * vect.fit_transform([data_[tic][a[i]] for i, tic in enumerate(self.TICKERS)]).T).A
+        save_results = {max(a): (vect.fit_transform([data_[tic][a[i]] for i, tic in enumerate(self.TICKERS)]) * vect.fit_transform([data_[tic][a[i]] for i, tic in enumerate(self.TICKERS)]).T).toarray()
                         for a in all_}
         return save_results
     
