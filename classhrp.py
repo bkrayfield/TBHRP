@@ -1,3 +1,5 @@
+### This file is the class that makes the text based groups.
+
 import pandas as pd
 import requests as rq
 import numpy as np
@@ -88,8 +90,6 @@ class GenerateSIMMAT:
                     "url": row.linkToFilingDetails, "type": "text"
                 }).text
         return data_
-    
-    # --- All other methods below are unchanged ---
     
     def get_SimilarityMAT(self, FILING_URLS):
         data_ = [rq.get("https://api.sec-api.io/extractor", params={
