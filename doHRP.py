@@ -135,7 +135,7 @@ def run_hrp_analysis(input_csv_path, output_dir, run_id, years, api_key=None,
     if preloaded_texts_path is not None:
         sampled_tickers = returns_df.columns.tolist()
     else:
-        sampled_tickers = returns_df.sample(n=sample_size, axis=1, random_seed=99).columns.tolist()
+        sampled_tickers = returns_df.sample(n=sample_size, axis=1, random_state=random_seed).columns.tolist()
     df = returns_df[sampled_tickers].dropna()
     print(f"Selected tickers: {sampled_tickers}")
 
