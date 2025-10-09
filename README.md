@@ -46,11 +46,11 @@ You can find example notebooks in the examples folder.
 
 The doHRP.py script requires a CSV file containing historical stock prices. By default, it looks for a file named top500Total.csv.
 
-CSV File Format (top500Total.csv):
-idx (Date)	Ticker1	Ticker2	Ticker3	...
-2020-01-01	100.00	50.00	200.00	...
-2020-01-02	101.50	51.25	198.00	...
-...	...	...	...	...
+| idx (Date) | Ticker1 | Ticker2 | Ticker3 | ... |
+| :--------- | :------ | :------ | :------ | :-- |
+| 2020-01-01 | 100.00  | 50.00   | 200.00  | ... |
+| 2020-01-02 | 101.50  | 51.25   | 198.00  | ... |
+| ...        | ...     | ...     | ...     | ... |
 
 The first column must be a date index.
 
@@ -90,3 +90,4 @@ License
 
 
 This project is open-source and available under the MIT License.
+
