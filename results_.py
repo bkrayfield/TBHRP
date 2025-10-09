@@ -29,8 +29,8 @@ def calculate_results(weights, pd_frames):
     
     return results
 
-home_dir_frames = "C:\\Users\\n00812642\\Downloads\\"
-home_dir_weights = "C:\\Users\\n00812642\\Downloads\\"
+home_dir_frames = "Results\"
+home_dir_weights = "Results\"
 
 frames_files = [file for file in os.listdir(home_dir_frames) if os.path.isfile(os.path.join(home_dir_frames, file))]
 weights_files = [file for file in os.listdir(home_dir_weights) if os.path.isfile(os.path.join(home_dir_weights, file))]
@@ -52,17 +52,3 @@ for frame_file, weight_file in zip(frames_files, weights_files):
         print(np.mean(tbhrp_results))
         print(np.std(tbhrp_results))
         print(np.mean(tbhrp_results) / np.std(tbhrp_results))
-
-'''
-plt.legend()
-plt.show()
-
-print(type)
-print(results)
-np.cumprod(np.array(results) + 1)[-1]-1
-
-    
-###Potential Speed up
-n = len(df)/30
-np.array_split(df, 30)
-'''
