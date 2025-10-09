@@ -6,6 +6,9 @@ import numpy as np
 from sec_api import QueryApi
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+
+np.errstate(divide='ignore')
+
 class GenerateSIMMAT:
     """
     Generates similarity matrices from 10-K filings.

@@ -10,6 +10,7 @@ from scipy.cluster.hierarchy import ClusterWarning
 from classhrp import GenerateSIMMAT, QueryApi
 
 simplefilter("ignore", ClusterWarning)
+np.errstate(divide='ignore')
 
 # ==============================================================================
 # SECTION 1: CORE HRP ALGORITHM HELPERS (Unchanged)
