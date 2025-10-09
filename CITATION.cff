@@ -1,0 +1,11 @@
+cff-version: 1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Rayfield"
+  given-names: "Blake"
+  orcid: "https://orcid.org/0000-0003-0390-1587"
+title: "Text Based Hierarchical Risk Parity (TBHRP)"
+version: 1.0
+doi: Forthcoming
+date-released: 2025-10-08
+url: "https://github.com/bkrayfield/TBHRP"
