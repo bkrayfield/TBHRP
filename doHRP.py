@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 from scipy.cluster.hierarchy import ClusterWarning
+from hrp_methods import getQuasiDiag, getRecBipart, correlDist, min_var
 
 # Assumes 'classhrp.py' is in the same directory
 from classhrp import GenerateSIMMAT, QueryApi
@@ -12,6 +13,7 @@ from classhrp import GenerateSIMMAT, QueryApi
 simplefilter("ignore", ClusterWarning)
 np.errstate(divide='ignore')
 
+'''
 # ==============================================================================
 # SECTION 1: CORE HRP ALGORITHM HELPERS (Unchanged)
 # ==============================================================================
@@ -61,7 +63,7 @@ def min_var(cov):
     icov = np.linalg.inv(np.matrix(cov))
     one = np.ones((icov.shape[0], 1))
     return (icov * one) / (one.T * icov * one)
-
+'''
 # ==============================================================================
 # SECTION 2: DATA FETCHING HELPER (Unchanged)
 # ==============================================================================
