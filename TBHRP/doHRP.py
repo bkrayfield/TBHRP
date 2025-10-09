@@ -121,6 +121,8 @@ def run_hrp_analysis(input_csv_path, output_dir, run_id, years, api_key=None,
         save_dict['HRP'] = hrp.sort_values(ascending=False)
         tfidf = np.asmatrix(np.split(keep_unclean.values[0], len(tickers_list)))
         pairwise_similarity = np.asarray((tfidf * tfidf.T))
+        #Added after publication
+        pairwise_similarity = np.clip(pairwise_similarity, -1.0, 1.0)
         dist_tbhrp = np.sqrt(((1 - pairwise_similarity) / 2.))
         np.fill_diagonal(dist_tbhrp, 0)
         link_tbhrp = sch.linkage(np.nan_to_num(dist_tbhrp, copy=False), 'single')
