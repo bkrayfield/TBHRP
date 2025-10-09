@@ -5,9 +5,10 @@ import requests as rq
 import numpy as np
 from sec_api import QueryApi
 from sklearn.feature_extraction.text import TfidfVectorizer
-
+import warnings
 
 np.errstate(divide='ignore')
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 class GenerateSIMMAT:
     """
