@@ -4,6 +4,13 @@ TBHRP (Text-Based Hierarchical Risk Parity) is a portfolio optimization method t
 
 HRP is a robust alternative to mean-variance optimization because it does not require the explicit inversion of the covariance matrix, making it less sensitive to estimation errors. TBHRP aims to further improve diversification by clustering companies based on fundamental business similarity rather than just price correlation.
 
+## *The TB-HRP code can be run in two ways*
+
+1. Using the SEC-API, which allows for the most up to date SEC fillings to be included in the analysis.
+2. Using other external text data formatting in the same style as the SEC-API data. This allows you to employ data outside of the stock market, including startups, housing, etc.
+
+If you wish to run with data not from SEC-API, example input files are provided [here](https://github.com/bkrayfield/TBHRP/tree/main/Sample_Input). Also see the [example](https://github.com/bkrayfield/TBHRP/blob/main/Examples/TBHRP_Demo.ipynb) for more guidence.
+
 ## Getting Started
 
 ### Prerequisites
@@ -32,8 +39,8 @@ You will need an API key from sec-api.io. Once you have your API key, update the
 
 ## Example Scripts!
 
-You can find an example notebook in the examples folder.
-* Running TBHRP Example
+You can find example notebooks in the examples folder.
+* [Running TBHRP Example](https://github.com/bkrayfield/TBHRP/blob/main/Examples/TBHRP_Demo.ipynb)
 
 ## Data Requirements
 
@@ -80,5 +87,6 @@ Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for any bugs, feature requests, or improvements.
 License
+
 
 This project is open-source and available under the MIT License.
