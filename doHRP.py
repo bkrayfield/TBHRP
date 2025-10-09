@@ -107,7 +107,7 @@ def run_hrp_analysis(input_csv_path, output_dir, run_id, years, api_key=None,
     is_offline = preloaded_urls_path and preloaded_texts_path
     if not is_offline and not api_key:
         raise ValueError("An API key must be provided for online mode.")
-    print("Running in OFFLINE mode." if is_offline else "Running in ONLINE mode.")
+    print("Running using SEC-API." if is_offline else "Running using preloaded mode.")
 
     # --- Step 1: Load Price Data ---
     print("Step 1: Loading and preparing price data...")
