@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as sch
 from scipy.cluster.hierarchy import ClusterWarning
-from hrp_methods import getQuasiDiag, getRecBipart, correlDist, min_var
+from TBHRP.hrp_methods import getQuasiDiag, getRecBipart, correlDist, min_var
 
 # Assumes 'classhrp.py' is in the same directory
-from classhrp import GenerateSIMMAT, QueryApi
+from TBHRP.classhrp import GenerateSIMMAT, QueryApi
 
 simplefilter("ignore", ClusterWarning)
 np.errstate(divide='ignore')
